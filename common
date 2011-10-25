@@ -1,0 +1,116 @@
+## Deepin LiveCD Build Tool Comman functions
+## 冷罡华 (Hiweed) <hiweed@gmail.com>
+## 张  成 (Stephen) <zhangcheng@linuxdeepin.com>
+
+
+## NOTE This script should better be sourced other than excuted
+
+## Exit with failure
+exit_fail ()
+{
+    if [ "$ALL_DONE" == "true" ]; then exit 0; fi
+    echo_and_log "[ERROR] The building process failed, see log file for more details: ${LOG_FILE}.0"
+    clean_up
+    savelog -q ${LOG_FILE} 
+    exit 1
+}
+
+## Print a error msg before exit
+exit_with_msg ()
+{
+    echo_and_log "[ERROR] $1"
+    exit_fail
+}
+
+lockfile ()
+{
+    LOCKFILE=$1
+    while [[ -f ${LOCKFILE} ]]; do
+	if [[ -d "/proc/$(cat ${LOCKFILE})" ]]; then
+	    ## the process is still running, wait
+	    echo "lock file exists, waiting for 10 seconds: ${LOCKFILE}"
+	    sleep 10
+	else
+	    ## the process has already quit, delete the lock
+	    echo "lock file exists, but the process is not running, delete the lock"
+	    rm ${LOCKFILE}
+	fi
+    done
+    echo $$ > ${LOCKFILE}
+}
+
+## if the file exist, source it
+source_if_exist ()
+{
+    if [[ "$1" == "-exec" ]]; then
+	EXEC="bash" 
+	shift
+    else
+	EXEC="source"
+    fi
+    if [ -f "$1" ]; then ${EXEC} "$1"; fi
+}
+
+## if the file has a ".local" version, source it and then the local version
+source_local_if_exist ()
+{
+    if [[ "$1" == "-exec" ]]; then
+	source_if_exist -exec "$2"
+	source_if_exist -exec "$2.local"
+    else
+	source_if_exist "$1"
+	source_if_exist "$1.local"
+    fi
+}
+
+## do sth. in chroot env 
+## $1 is the chroot path
+chroot_do () 
+{
+    CHROOT=$1
+    shift
+    sudo chroot "$CHROOT" /usr/bin/env -i \
+	HOME=/root \
+	USERNAME=root \
+	USER=root \
+	LOGNAME=root \
+	LC_ALL=C \
+	PATH=/sbin:/bin:/usr/sbin:/usr/bin \
+	DEBIAN_FRONTEND=noninteractive \
+	$*
+}
+
+## copy the script to $CHROOT_PATH/tmp/ and execute it
+chroot_source_if_exist ()
+{
+    BASENAME=$(basename $1)
+    if [[ -f "$1" ]]; then
+	sudo cp "$1" ${CHROOT_PATH}/tmp/$BASENAME
+	sudo chmod +x ${CHROOT_PATH}/tmp/$BASENAME
+	sudo chroot_do ${CHROOT_PATH} /tmp/$BASENAME
+    fi
+}
+
+chroot_source_local_if_exist ()
+{
+    chroot_source_if_exist "$1"
+    chroot_source_if_exist "$1.local"
+}
+
+## log some message into LOG_FILE
+log ()
+{
+    [[ $# -gt 0 ]] \
+	&& echo "$*" >> ${LOG_FILE} \
+	|| cat >> ${LOG_FILE}
+}
+
+## print some message on the screen, then store it into LOG_FILE
+echo_and_log ()
+{
+    [[ $# -gt 0 ]] \
+	&& echo "[$(date +%H:%M:%S)] $*" | tee -a ${LOG_FILE} \
+	|| tee -a ${LOG_FILE}
+}
+
+# vim:set ts=8 sts=4 sw=4 ft=sh:

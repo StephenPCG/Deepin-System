@@ -1,0 +1,437 @@
+#!/bin/bash
+
+## Deepin LiveCD Build Tool  <http://www.linuxdeepin.com/>
+## 冷罡华 (Hiweed) <hiweed@gmail.com>
+## 张  成 (Stephen) <zhangcheng@linuxdeepin.com>
+
+## change directory to the working directory first and set WORK_PATH
+export OLD_PWD=${PWD}
+cd $(dirname $0)
+export WORK_PATH=$(pwd)
+export SCRIPT_NAME=$(basename $0)
+export ALL_DONE="false"
+
+[[ -f "${WORK_PATH}/common" ]] && source ${WORK_PATH}/common \
+    || echo "[ERROR] common file does not exist." 
+
+source_local_if_exist "${WORK_PATH}/${SCRIPT_NAME}.conf"
+
+set -u -e -o pipefail
+trap exit_fail ERR TERM EXIT KILL
+
+clean_up ()
+{
+    [[ -f "${CHROOT_LOCK}" ]] && postchroot
+    [[ -f "${BUILD_LOCK}" ]] && rm ${BUILD_LOCK}
+    savelog -q ${LOG_FILE} 
+}
+
+do_help ()
+{
+    echo "Usage:
+    $0 [option] action1 [action2 [action3..]]
+
+Options:
+    -arch=i386|amd64		Default to the host arch
+    -scheme=SCHEME		Default to "default"
+    -version=11.12|12.06|...	Default to "current"
+    -output=FILENAME		Output iso file name, default to \${DISTRO_NAME}-SCHEME-ARCH.iso
+    -outputbase=OUTPUT_BASE	Where to put output files, default to ${OUTPUT_BASE}
+    -buildbase=BUILD_BASE	Where to put files used to build, default to ${BUILD_BASE}
+    -copy-chroot-path=PATH	If specified, copy the PATH to CHROOT_PATH instead of building a real base
+    -backup-chroot-path=PATH	If specified, copy the chroot path to PATH right after finishing building base 
+Actions:
+    init			Initialization work, only need to do once in one host
+    base			Bootstrap a base system
+    custom			Execute the customization scripts
+    casper			Setting up for casper
+    iso				Build the ISO image
+    zsync			Build the zsync index file
+    md5				Calculate MD5 of the output files
+    bt				Make torrent files
+    all				Equal to base custom casper iso zsync md5 bt
+    help			Display this help
+    "
+}
+
+## parse the commandline
+check_commandline ()
+{
+    ACTIONS=""
+    while [ $# -gt 0 ]; do
+	case "$1" in
+	    -arch=*)
+		ARCH=${1##-arch=}
+		;;
+	    -version=*)
+		VERSION=${1##-version=}
+		;;
+	    -scheme=*)
+		SCHEME=${1##-scheme=}
+		;;
+	    -output=*)
+		OUTPUT=${1##-output=}
+		;;
+	    -outputbase=*)
+		OUTPUT_BASE=${1##-outputbase=}
+		if [[ $OUTPUT_BASE != /* ]]; then OUTPUT_BASE="${OLD_PWD}/$OUTPUT_BASE"; fi
+		;;
+	    -buildbase=*)
+		BUILD_BASE=${1##-buildbase=}
+		if [[ $BUILD_BASE != /* ]]; then BUILD_BASE="${OLD_PWD}/$BUILD_BASE"; fi
+		;;
+	    -copy-chroot-path=*)
+		COPY_CHROOT_PATH=${1##-copy-chroot-path=}
+		if [[ $COPY_CHROOT_PATH != /* ]]; then COPY_CHROOT_PATH="${OLD_PWD}/$COPY_CHROOT_PATH"; fi
+		;;
+	    -backup-chroot-path=*)
+		BACKUP_CHROOT_PATH=${1##-backup-chroot-path=}
+		if [[ $BACKUP_CHROOT_PATH != /* ]]; then BACKUP_CHROOT_PATH="${OLD_PWD}/$BACKUP_CHROOT_PATH"; fi
+		;;
+	    *)
+		ACTIONS="${ACTIONS}$1 "
+		;;
+	esac
+	shift
+    done
+}
+
+## initialize some variables for the script execution
+script_init ()
+{
+    [[ "$(arch)" == "x86_64" ]] && DEFAULT_ARCH="amd64" || DEFAULT_ARCH="i386"
+    ARCH=${ARCH:-${DEFAULT_ARCH}}
+
+    DEFAULT_VERSION=$(readlink ${WORK_PATH}/conf/current)
+    VERSION=${VERSION:-${DEFAULT_VERSION}}
+
+    DEFAULT_SCHEME=$(readlink ${WORK_PATH}/conf/${VERSION}/default)
+    SCHEME=${SCHEME:-${DEFAULT_SCHEME}}
+
+    CONF_PATH="${WORK_PATH}/conf/${VERSION}/${SCHEME}"
+
+    source_local_if_exist "${CONF_PATH}/${SCRIPT_NAME}.conf"
+    DISTRO_NAME=${DISTRO_NAME:-"deepin"}
+
+    DEFAULT_OUTPUT="${DISTRO_NAME}-${SCHEME}-${ARCH}.iso"
+    OUTPUT=${OUTPUT:-${DEFAULT_OUTPUT}}
+
+    DEFAULT_OUTPUT_PATH="${OUTPUT_BASE}/${SCHEME}/daily-live/$(date +%Y%m%d)"
+    OUTPUT_PATH=${OUTPUT_PATH:-${DEFAULT_OUTPUT_PATH}}
+
+    ISO_FILE="${OUTPUT_PATH}/${OUTPUT}"
+
+    ## BUILD_BASE is already set
+    CHROOT_PATH="${BUILD_BASE}/${VERSION}/${SCHEME}/${ARCH}/chroot"
+    ISO_BUILD_PATH="${BUILD_BASE}/${VERSION}/${SCHEME}/${ARCH}/iso"
+
+    COPY_CHROOT_PATH="${COPY_CHROOT_PATH:-}"
+    BACKUP_CHROOT_PATH="${BACKUP_CHROOT_PATH:-}"
+
+    APT_ARCHIVE_PATH="${APT_ARCHIVE_BASE}/${VERSION}/${ARCH}"
+
+    LOG_PATH="${LOG_BASE}/${VERSION}/${SCHEME}/${ARCH}"
+    LOG_FILE="${LOG_PATH}/${SCRIPT_NAME}.log"
+    [[ -d "${LOG_PATH}" ]] || mkdir -p ${LOG_PATH}
+
+    BUILD_LOCK="/tmp/${SCRIPT_NAME}-${VERSION}-${SCHEME}-${ARCH}.lock"
+    CHROOT_LOCK="/tmp/${SCRIPT_NAME}-${VERSION}-${SCHEME}-${ARCH}-chroot.lock"
+
+    source_local_if_exist "${CONF_PATH}/${DISTRO_NAME}.all.conf"
+    source_local_if_exist "${CONF_PATH}/${DISTRO_NAME}.${ARCH}.conf"
+
+    echo_and_log "[MKISO]        ----- ISO parameters -----"
+    echo_and_log "[MKISO]     Distro Name: ${DISTRO_NAME}"
+    echo_and_log "[MKISO]  Distro Version: ${VERSION}"
+    echo_and_log "[MKISO]     Distro Arch: ${ARCH}"
+    echo_and_log "[MKISO]    Build Scheme: ${SCHEME}"
+    echo_and_log "[MKISO]     Output File: ${OUTPUT}"
+    echo_and_log "[MKISO]     Output Path: ${OUTPUT_PATH}"
+    echo_and_log "[MKISO]   ISO Full Path: ${ISO_FILE}"
+    echo_and_log "[MKISO]       Conf Path: ${CONF_PATH}"
+    echo_and_log "[MKISO]     Chroot Path: ${CHROOT_PATH}"
+    echo_and_log "[MKISO]  ISO Build Path: ${ISO_BUILD_PATH}"
+    echo_and_log "[MKISO]        Log PATH: ${LOG_PATH}"
+    echo_and_log "[MKISO]         Actions: ${ACTIONS}"
+    echo_and_log ""
+}
+
+do_action ()
+{
+    while [ $# -gt 0 ]; do
+	case "$1" in
+	    help)
+		do_help ;;
+	    clean)
+		do_clean ;;
+	    init) 
+		do_init ;;
+	    base)
+		do_base ;;
+	    custom)
+		do_custom ;;
+	    casper)
+		do_casper ;;
+	    iso)
+		do_iso ;;
+	    zsync)
+		do_zsync ;;
+	    bt)
+		do_bt ;;	
+	    all)
+		do_clean
+		do_base
+		do_custom
+		do_casper
+		do_iso
+		do_zsync
+		do_md5
+		do_bt
+		;;
+	    *)
+		echo "Unknown Action: $1"
+	esac
+	shift
+    done
+}
+
+do_init () {
+    echo_and_log "[INIT] Initialize the host system to build ISO"
+
+    echo_and_log "[INIT] Installing tools need to build ISO"
+    sudo apt-get install -y --no-install-recommends \
+	debootstrap squashfs-tools genisoimage syslinux lzma mktorrent zsync | log
+
+    echo_and_log "[INIT] Finished initialization :-)"
+    echo_and_log ""
+}
+
+prechroot () {
+    lockfile ${CHROOT_LOCK}
+
+    sudo cp /etc/hosts ${CHROOT_PATH}/etc/
+    sudo cp /etc/resolv.conf ${CHROOT_PATH}/etc/
+    sudo mount --bind /dev ${CHROOT_PATH}/dev
+
+    sudo chroot ${CHROOT_PATH} mount -t proc none /proc
+    sudo chroot ${CHROOT_PATH} mount -t sysfs none /sys
+    sudo chroot ${CHROOT_PATH} mount -t devpts none /dev/pts
+    sudo chroot ${CHROOT_PATH} dbus-uuidgen | sudo tee ${CHROOT_PATH}/var/lib/dbus/machine-id | log
+    sudo chroot ${CHROOT_PATH} dpkg-divert --local --rename --add /sbin/initctl | log
+    sudo chroot ${CHROOT_PATH} ln -s /bin/true /sbin/initctl | log
+
+    [[ -d ${APT_ARCHIVE_PATH} ]] || mkdir -p ${APT_ARCHIVE_PATH}
+    sudo mount --bind ${APT_ARCHIVE_PATH} ${CHROOT_PATH}/var/cache/apt/archives/
+}
+
+postchroot () {
+    [[ -f ${CHROOT_LOCK} ]] || exit_with_msg "[POSTCHROOT] CHROOT_LOCK file does not exist, did you run postchroot by actident?"
+
+    sudo chroot ${CHROOT_PATH} umount /proc -lf
+    sudo chroot ${CHROOT_PATH} umount /sys -lf
+    sudo chroot ${CHROOT_PATH} umount /dev/pts -lf
+    sudo rm -rf ${CHROOT_PATH}/tmp/* ${CHROOT_PATH}/root/.bash_history
+    sudo rm -f ${CHROOT_PATH}/etc/hosts
+    sudo rm -f ${CHROOT_PATH}/etc/resolv.conf
+    sudo umount ${CHROOT_PATH}/dev -lf
+    [[ -f "${CHROOT_PATH}/var/lib/dbus/machine-id" ]] && sudo rm -f ${CHROOT_PATH}/var/lib/dbus/machine-id
+    [[ -f "${CHROOT_PATH}/sbin/initctl" ]] && sudo rm -f ${CHROOT_PATH}/sbin/initctl
+    sudo chroot ${CHROOT_PATH} dpkg-divert --rename --remove /sbin/initctl |& log
+    sudo umount ${CHROOT_PATH}/var/cache/apt/archives/ -lf
+
+    rm -f ${CHROOT_LOCK}
+}
+
+do_clean () {
+    echo "do_clean is not implemented"
+}
+
+do_regular_base () {
+    echo_and_log "[BASE] Building base system with debootstrap ..."
+    echo_and_log "[BASE] Using local mirror: ${DEBOOTSTRAP_MIRROR}"
+    echo_and_log "[BASE] Using Code name: ${CODENAME}"
+    if [[ -d ${CHROOT_PATH} ]]; then sudo rm -rf ${CHROOT_PATH}; fi
+    mkdir -p ${CHROOT_PATH}
+    sudo debootstrap --arch=${ARCH} --include=dbus ${CODENAME} ${CHROOT_PATH} ${DEBOOTSTRAP_MIRROR} | log
+    echo_and_log "[BASE] Build base system finished"
+
+    echo_and_log "[BASE] Installing default packages defined by scheme ..."
+    prechroot
+    echo_and_log "[BASE] Default packages are: ${DEFAULT_PACKAGES}"
+    echo "${SOURCES_LIST}" | sudo tee "${CHROOT_PATH}/etc/apt/sources.list" > /dev/null
+    wget -q "${DEEPIN_APTKEY_URL}" -O- | chroot_do ${CHROOT_PATH} apt-key add - > /dev/null
+    chroot_do ${CHROOT_PATH} apt-get --allow-unauthenticated update |& log
+    chroot_do ${CHROOT_PATH} apt-get install \
+	--no-install-recommends -y --force-yes -qq \
+	--allow-unauthenticated \
+	${DEFAULT_PACKAGES} |& log
+    postchroot
+    echo_and_log "[BASE] Install default packages finished"
+    
+    if [ -n "$BACKUP_CHROOT_PATH" ]; then
+	echo_and_log "[BASE] Backing up CHROOT_PATH to BACKUP_CHROOT_PATH (${BACKUP_CHROOT_PATH}) ..."
+	[[ -d $(dirname ${BACKUP_CHROOT_PATH}) ]] || mkdir -p $(dirname ${BACKUP_CHROOT_PATH})
+	sudo rsync -a --delete --delete-after "${CHROOT_PATH}/" "${BACKUP_CHROOT_PATH}/"
+    fi
+
+}
+
+do_base () {
+    if [ -n "$COPY_CHROOT_PATH" ]; then
+	if [ -d "$COPY_CHROOT_PATH" ]; then
+	    echo_and_log "[BASE] copy COPY_CHROOT_PATH (${COPY_CHROOT_PATH}) to CHROOT_PATH ..."
+	    [[ -d $(dirname ${CHROOT_PATH}) ]] || mkdir -p $(dirname ${CHROOT_PATH})
+	    sudo rsync -a --delete --delete-after "${COPY_CHROOT_PATH}/" "${CHROOT_PATH}/"
+
+	    if [ -n "$BACKUP_CHROOT_PATH" ]; then 
+		if [[ "$BACKUP_CHROOT_PATH" == "$COPY_CHROOT_PATH" ]]; then
+		    echo_and_log "[BASE] BACKUP_CHROOT_PATH is the same as COPY_CHROOT_PATH, skip backup process"
+		else
+		    echo_and_log "[BASE] backup CHROOT_PATH to BACKUP_CHROOT_PATH (${BACKUP_CHROOT_PATH}) ..."
+		    [[ -d $(dirname ${BACKUP_CHROOT_PATH}) ]] || mkdir -p $(dirname ${BACKUP_CHROOT_PATH})
+		    sudo rsync -a --delete --delete-after "${CHROOT_PATH}/" "${BACKUP_CHROOT_PATH}/"
+		fi
+	    fi
+	else
+	    echo_and_log "[BASE] Ignore non-exist COPY_CHROOT_PATH (${COPY_CHROOT_PATH}), doing a regular base"
+	    do_regular_base
+	fi
+    else
+	do_regular_base	
+    fi
+
+    echo_and_log ""
+}
+
+do_custom () {
+    echo "do_custom is not implemented"
+}
+
+do_casper () {
+    echo_and_log "[CASPER] Generating casper directory ..."
+
+    [[ -d ${CHROOT_PATH} ]] || exit_with_msg "[CASPER] you must build a base system before doing casper"
+
+    [[ -d "${ISO_BUILD_PATH}/casper" ]] && sudo rm -rf "${ISO_BUILD_PATH}/casper"
+    mkdir -p "${ISO_BUILD_PATH}/casper"
+
+    echo_and_log "[CASPER] Generating filesystem.squashfs ..."
+    sudo mksquashfs ${CHROOT_PATH} ${ISO_BUILD_PATH}/casper/filesystem.squashfs -comp xz | log
+
+    echo_and_log "[CASPER] Generating filesystem.size ..."
+    sudo du -sx --block-size=1 ${CHROOT_PATH} | cut -f1 > ${ISO_BUILD_PATH}/casper/filesystem.size
+
+    echo_and_log "[CASPER] Generating filesystem.manifest ..."
+    sudo chroot ${CHROOT_PATH} dpkg-query -W --showformat='${Package} ${Version}\n' \
+	> ${ISO_BUILD_PATH}/casper/filesystem.manifest
+
+    echo_and_log "[CASPER] Generating filesystem.manifest-desktop ..."
+    sudo cp ${ISO_BUILD_PATH}/casper/filesystem.manifest{,-desktop}
+    REMOVE='ubiquity ubiquity-frontend-gtk ubiquity-ubuntu-artwork ubiquity-slideshow-deepin ubiquity-casper casper cryptsetup dmraid ecryptfs-utils keyutils language-selector-common libdebconfclient libdebian-installer libdmraid libecryptfs0 libntfs10 localechooser-data ntfsprogs python-pyicu rdate reiserfsprogs user-setup'
+    for i in $REMOVE
+    do
+	sudo sed -i /$i/d ${ISO_BUILD_PATH}/casper/filesystem.manifest-desktop
+    done
+
+    echo_and_log "[CASPER] Copying vmlinuz and initrd.lz to casper/ ..."
+    VMLINUZ_FILE="${CHROOT_PATH}/$(readlink ${CHROOT_PATH}/vmlinuz)"
+    [[ -f ${VMLINUZ_FILE} ]] \
+	&& sudo cp ${VMLINUZ_FILE} ${ISO_BUILD_PATH}/casper/vmlinuz \
+	|| exit_with_msg "[CASPER] vmlinuz not find in base system"
+    INITRD_FILE="${CHROOT_PATH}/$(readlink ${CHROOT_PATH}/initrd.img)"
+    [[ -f ${INITRD_FILE} ]] \
+	&& sudo cp ${INITRD_FILE} ${ISO_BUILD_PATH}/casper/initrd.lz \
+	|| exit_with_msg "[CASPER] initrd not find in base system"
+
+    echo_and_log "[CASPER] Finished generating casper directory"
+    echo_and_log ""
+}
+
+do_iso () {
+    echo_and_log "[ISO] Preparing to generating iso ..."
+
+    [[ -d "${ISO_BUILD_PATH}/casper" ]] || exit_with_msg "[ISO] You must generate casper before generating iso"
+
+    pushd ${ISO_BUILD_PATH} > /dev/null
+    echo_and_log "[ISO] Installing isolinux ..."
+    [[ -d ${ISO_BUILD_PATH}/isolinux ]] && sudo rm -rf ${ISO_BUILD_PATH}/isolinux
+    [[ -d ${CONF_PATH}/iso/isolinux/ ]] \
+	&& cp -r ${CONF_PATH}/iso/isolinux/ ${ISO_BUILD_PATH}/ \
+	|| exit_with_msg "[ISO] ${CONF_PATH}/iso/isolinux/ not found"
+    [[ -d ${CONF_PATH}/iso/preseed/ ]] && cp -r ${CONF_PATH}/iso/preseed/ ${ISO_BUILD_PATH}/
+    [[ -d ${CONF_PATH}/iso/DeepWin.exe ]] && cp ${ISO_BUILD_PATH}/iso/DeepWin.exe ${ISO_BUILD_PATH}/
+
+    echo_and_log "[ISO] Refreshing MD5 checksum ..."
+    [[ -f ${ISO_BUILD_PATH}/md5sum.txt ]] && sudo rm -f ${ISO_BUILD_PATH}/md5sum.txt
+    find . -type f -print0 \
+	| xargs -0 sudo md5sum \
+	| grep -v isolinux/boot.cat > md5sum.txt
+
+    echo_and_log "[ISO] Generating README.diskdefines ..."
+    cat > ${ISO_BUILD_PATH}/README.diskdefines <<EOF
+#define DISKNAME ${DISTRO_NAME} $VERSION "$CODENAME" - $STATUS $ARCH ($DATE)
+#define TYPE binary
+#define TYPEbinary 1
+#define ARCH $ARCH
+#define ARCH${ARCH} 1
+#define DISKNUM 1
+#define DISKNUM1 1
+#define TOTALNUM 0
+#define TOTALNUM0 1
+EOF
+    
+    [[ -d "${ISO_BUILD_PATH}/.disk" ]] || mkdir -p "${ISO_BUILD_PATH}/.disk"
+    echo_and_log "[ISO] Generating .disk/base_installable ..."
+    echo "full_cd/single" > ${ISO_BUILD_PATH}/.disk/cd_type
+    echo_and_log "[ISO] Generating .disk/info ..."
+    echo "${DISTRO_NAME} ${VERSION} \"${CODENAME}\" - ${STATUS} ${ARCH} ($DATE)" \
+	> ${ISO_BUILD_PATH}/.disk/info
+    echo_and_log "[ISO] Generating .disk/release_notes_url ..."
+    echo "${RELEASE_URL}" > ${ISO_BUILD_PATH}/.disk/release_notes_url
+    
+    echo_and_log "[ISO] Generating ISO: ${ISO_FILE} ..."
+    [[ -d ${OUTPUT_PATH} ]] || mkdir -p ${OUTPUT_PATH}
+    [[ -f ${ISO_FILE} ]] && sudo rm -f ${ISO_FILE}
+    sudo genisoimage -D -r -V "$DISTRO_NAME $VERSION (${ARCH})" -cache-inodes -J -l \
+	-b isolinux/isolinux.bin -c isolinux/boot.cat \
+	-no-emul-boot -boot-load-size 4 -boot-info-table \
+	-input-charset utf-8 \
+	-o ${ISO_FILE} . |& log
+    sudo isohybrid --partok ${ISO_FILE}
+
+    popd > /dev/null
+
+    echo_and_log "[ISO] Successfully generated ISO image: ${ISO_FILE} :)"
+    echo_and_log ""
+}
+
+do_zsync () {
+    echo "do_zsync is not implemented"
+}
+
+do_md5 () {
+    echo "do_md5 is not implemented"
+}
+
+do_bt () {
+    echo "do_bt is not implemented"
+}
+
+[[ $# -eq 0 ]] && do_help && exit
+
+check_commandline $*
+script_init
+[[ "x${ACTIONS}x" == "xx" ]] && do_help && exit
+
+lockfile ${BUILD_LOCK}
+
+do_action ${ACTIONS}
+
+echo_and_log "[MKISO] Finished executing actions: ${ACTIONS}"
+echo_and_log "[MKISO] See log for more details: ${LOG_FILE}.0"
+savelog -q ${LOG_FILE} 
+
+rm -f ${BUILD_LOCK}
+
+export ALL_DONE="true"
+# vim:set ts=8 sts=4 sw=4 ft=sh:

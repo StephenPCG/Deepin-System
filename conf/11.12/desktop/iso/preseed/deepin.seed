@@ -1,0 +1,40 @@
+# Language and country.
+#d-i 	debian-installer/locale string zh_CN
+
+# Keyboard 
+d-i 	console-setup/ask_detect boolean false
+d-i 	console-setup/layoutcode string us
+
+# Time
+d-i 	clock-setup/ntp boolean false
+#d-i 	time/zone string Asia/Shanghai
+d-i 	clock-setup/utc boolean false
+
+# Don't install any task.
+tasksel	tasksel/first	multiselect 
+
+# Don't install any translation packages.
+d-i	pkgsel/language-pack-patterns	string
+
+# Language support is expected to be missing.
+d-i	pkgsel/install-language-support	boolean false
+
+# Don't install language packages
+d-i	pkgsel/language-packs string 
+
+
+#d-i netcfg/get_hostname string deepin
+
+# To create a normal user account.
+#d-i passwd/user-fullname string Linux Deepin User
+#d-i user-setup/allow-password-empty boolean true
+#d-i passwd/allow-password-empty boolean true
+#d-i passwd/username string deepin
+#d-i oem-config/enable boolean true
+#d-i passwd/user-password string
+#d-i passwd/user-password-again string
+
+# Don't show summary before install
+ubiquity ubiquity/summary note
+ubiquity ubiquity/reboot boolean true
+

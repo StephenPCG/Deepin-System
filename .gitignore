@@ -1,0 +1,6 @@
+*.local
+*.swp
+build/
+output/
+apt-archive/
+log/
