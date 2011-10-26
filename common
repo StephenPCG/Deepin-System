@@ -1,4 +1,4 @@
-## Deepin LiveCD Build Tool Comman functions
+## Deepin LiveCD Build Tool Common functions
 ## 冷罡华 (Hiweed) <hiweed@gmail.com>
 ## 张  成 (Stephen) <zhangcheng@linuxdeepin.com>
 
@@ -87,7 +87,7 @@ chroot_source_if_exist ()
     if [[ -f "$1" ]]; then
 	sudo cp "$1" ${CHROOT_PATH}/tmp/$BASENAME
 	sudo chmod +x ${CHROOT_PATH}/tmp/$BASENAME
-	sudo chroot_do ${CHROOT_PATH} /tmp/$BASENAME
+	chroot_do ${CHROOT_PATH} /tmp/$BASENAME
     fi
 }
 

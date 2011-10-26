@@ -304,7 +304,16 @@ do_base () {
 }
 
 do_custom () {
-    echo "do_custom is not implemented"
+    echo_and_log "[CUSTOM] Executing custom script (inside chroot) ..."
+    prechroot
+    chroot_source_local_if_exist "${CONF_PATH}/custom.chroot.sh" |& log
+    postchroot
+
+    echo_and_log "[CUSTOM] Executing custom script (outside chroot) ..."
+    source_local_if_exist "${CONF_PATH}/custom.sh" 
+
+    echo_and_log "[CUSTOM] Customization finished ..."
+    echo_and_log ""
 }
 
 do_casper () {
