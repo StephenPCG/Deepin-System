@@ -259,6 +259,7 @@ do_regular_base () {
     prechroot
     echo_and_log "[BASE] Default packages are: ${DEFAULT_PACKAGES}"
     echo "${SOURCES_LIST}" | sudo tee "${CHROOT_PATH}/etc/apt/sources.list" > /dev/null
+    echo "${APT_PREFERENCES}" | sudo tee "${CHROOT_PATH}/etc/apt/preferences" > /dev/null
     wget -q "${DEEPIN_APTKEY_URL}" -O- | chroot_do ${CHROOT_PATH} apt-key add - > /dev/null
     chroot_do ${CHROOT_PATH} apt-get --allow-unauthenticated update |& log
     chroot_do ${CHROOT_PATH} apt-get install \
