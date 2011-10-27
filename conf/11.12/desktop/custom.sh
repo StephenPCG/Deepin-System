@@ -12,5 +12,11 @@ if [[ -n "${OLD_SOURCES_LIST}" ]]; then
     echo "${OLD_SOURCES_LIST}" \
 	| sudo tee "${CHROOT_PATH}/etc/apt/sources.list" > /dev/null
 fi
+if [[ -n "${OLD_APT_PREFERENCES}" ]]; then
+    echo "${OLD_APT_PREFERENCES}" \
+	| sudo tee "${CHROOT_PATH}/etc/apt/preferences" > /dev/null
+fi
 
 # vim:set ts=8 sts=4 sw=4 ft=sh:
+
+
