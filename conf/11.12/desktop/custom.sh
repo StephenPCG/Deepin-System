@@ -6,6 +6,7 @@ echo_and_log "[CUSTOM] Clean cache directories ..."
 sudo rm -rf ${CHROOT_PATH}/var/cache/man/*
 sudo rm -rf ${CHROOT_PATH}/var/cache/debconf/*old
 sudo rm -rf ${CHROOT_PATH}/var/cache/apt-xapian-index/index*
+sudo rm -rf ${CHROOT_PATH}/tmp/*
 
 if [[ -n "${OLD_SOURCES_LIST}" ]]; then
     echo "${OLD_SOURCES_LIST}" \
