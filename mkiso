@@ -262,7 +262,7 @@ do_regular_base () {
     wget -q "${DEEPIN_APTKEY_URL}" -O- | chroot_do ${CHROOT_PATH} apt-key add - > /dev/null
     chroot_do ${CHROOT_PATH} apt-get --allow-unauthenticated update |& log
     chroot_do ${CHROOT_PATH} apt-get install \
-	--no-install-recommends -y --force-yes -qq \
+	--no-install-recommends -y --force-yes \
 	--allow-unauthenticated \
 	${DEFAULT_PACKAGES} |& log
     postchroot
@@ -438,9 +438,9 @@ do_action ${ACTIONS}
 
 echo_and_log "[MKISO] Finished executing actions: ${ACTIONS}"
 echo_and_log "[MKISO] See log for more details: ${LOG_FILE}.0"
-savelog -q ${LOG_FILE} 
 
 rm -f ${BUILD_LOCK}
+clean_up
 
 export ALL_DONE="true"
 # vim:set ts=8 sts=4 sw=4 ft=sh:

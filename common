@@ -11,7 +11,6 @@ exit_fail ()
     if [ "$ALL_DONE" == "true" ]; then exit 0; fi
     echo_and_log "[ERROR] The building process failed, see log file for more details: ${LOG_FILE}.0"
     clean_up
-    savelog -q ${LOG_FILE} 
     exit 1
 }
 
