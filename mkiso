@@ -45,6 +45,7 @@ Actions:
     base			Bootstrap a base system
     custom			Execute the customization scripts
     casper			Setting up for casper
+    chroot			Change root to the live file system (usefull for troubleshooting)
     iso				Build the ISO image
     zsync			Build the zsync index file
     md5				Calculate MD5 of the output files
@@ -236,9 +237,9 @@ do_chroot ()
 postchroot () {
     [[ -f ${CHROOT_LOCK} ]] || exit_with_msg "[POSTCHROOT] CHROOT_LOCK file does not exist, did you run postchroot by actident?"
 
-    sudo umount ${CHROOT_PATH}/proc -lf
-    sudo umount ${CHROOT_PATH}/sys -lf
-    sudo umount ${CHROOT_PATH}/dev/pts -lf
+    sudo chroot ${CHROOT_PATH} umount /proc -lf
+    sudo chroot ${CHROOT_PATH} umount /sys -lf
+    sudo chroot ${CHROOT_PATH} umount /dev/pts -lf
     sudo rm -rf ${CHROOT_PATH}/tmp/* ${CHROOT_PATH}/root/.bash_history
     sudo rm -f ${CHROOT_PATH}/etc/hosts
     sudo rm -f ${CHROOT_PATH}/etc/resolv.conf
