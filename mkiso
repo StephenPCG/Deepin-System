@@ -170,6 +170,8 @@ do_action ()
 		do_base ;;
 	    custom)
 		do_custom ;;
+	    chroot)
+		do_chroot ;;
 	    casper)
 		do_casper ;;
 	    iso)
@@ -224,12 +226,19 @@ prechroot () {
     sudo mount --bind ${APT_ARCHIVE_PATH} ${CHROOT_PATH}/var/cache/apt/archives/
 }
 
+do_chroot ()
+{
+    prechroot
+    sudo chroot ${CHROOT_PATH}
+    postchroot
+}
+
 postchroot () {
     [[ -f ${CHROOT_LOCK} ]] || exit_with_msg "[POSTCHROOT] CHROOT_LOCK file does not exist, did you run postchroot by actident?"
 
-    sudo chroot ${CHROOT_PATH} umount /proc -lf
-    sudo chroot ${CHROOT_PATH} umount /sys -lf
-    sudo chroot ${CHROOT_PATH} umount /dev/pts -lf
+    sudo umount ${CHROOT_PATH}/proc -lf
+    sudo umount ${CHROOT_PATH}/sys -lf
+    sudo umount ${CHROOT_PATH}/dev/pts -lf
     sudo rm -rf ${CHROOT_PATH}/tmp/* ${CHROOT_PATH}/root/.bash_history
     sudo rm -f ${CHROOT_PATH}/etc/hosts
     sudo rm -f ${CHROOT_PATH}/etc/resolv.conf
