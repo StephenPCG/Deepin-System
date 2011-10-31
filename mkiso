@@ -403,6 +403,12 @@ EOF
 	-o ${ISO_FILE} . |& log
     isohybrid --partok ${ISO_FILE}
 
+    OUTPUT_BASENAME=$(basename ${OUTPUT} .iso)
+    echo_and_log "[ISO] Generating ${OUTPUT_BASENAME}.list ..."
+    find . -type f | cut -c 2- > ${OUTPUT_PATH}/${OUTPUT_BASENAME}.list
+    echo_and_log "[ISO] Generating ${OUTPUT_BASENAME}.manifest ..."
+    cp ${ISO_BUILD_PATH}/casper/filesystem.manifest ${OUTPUT_PATH}/${OUTPUT_BASENAME}.manifest
+
     popd > /dev/null
 
     echo_and_log "[ISO] Successfully generated ISO image: ${ISO_FILE} :)"
