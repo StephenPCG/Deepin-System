@@ -50,6 +50,7 @@ Actions:
     md5				Calculate MD5 of the output files
     bt				Make torrent files
     all				Equal to base custom casper iso zsync md5 bt
+    chroot			Chroot to the build environment
     help			Display this help
     "
 }
@@ -187,6 +188,9 @@ do_action ()
 		do_zsync
 		do_md5
 		do_bt
+		;;
+	    chroot)
+		do_chroot
 		;;
 	    *)
 		echo "Unknown Action: $1"
@@ -412,6 +416,24 @@ EOF
     popd > /dev/null
 
     echo_and_log "[ISO] Successfully generated ISO image: ${ISO_FILE} :)"
+    echo_and_log ""
+}
+
+do_chroot () {
+    echo_and_log "[MKISO] Preparing to chroot to build env ..."
+    
+    if [ -d ${CHROOT_PATH} ]; then
+	prechroot
+	echo_and_log "[MKISO] Preparation done, now entering chroot ..."
+
+	chroot_do ${CHROOT_PATH} /bin/bash
+	echo_and_log "[MKISO] Exit from chroot environment"
+
+	postchroot
+    else
+	echo_and_log "[MKISO] Base system does not exist, exiting ..."
+    fi
+
     echo_and_log ""
 }
 
