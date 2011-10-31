@@ -437,7 +437,7 @@ do_zsync () {
     echo_and_log "[ZSYNC] Begin generating zsync index file ..."
     [[ -d ${OUTPUT_PATH} ]] || exit_with_msg "[HASHSUM] Output path does not exist: ${OUTPUT_PATH}"
     pushd ${OUTPUT_PATH} > /dev/null
-    zsyncmake ${OUTPUT} |& log
+    zsyncmake -C ${OUTPUT} |& log
     popd  > /dev/null
     echo_and_log "[ZSYNC] Finished generating zsync index file: ${ISO_FILE}.zsync"
     echo_and_log ""
