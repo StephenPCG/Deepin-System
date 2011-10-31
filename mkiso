@@ -426,7 +426,7 @@ do_chroot () {
 	prechroot
 	echo_and_log "[MKISO] Preparation done, now entering chroot ..."
 
-	chroot_do ${CHROOT_PATH} /bin/bash
+	chroot_do ${CHROOT_PATH} /bin/bash | echo_and_log
 	echo_and_log "[MKISO] Exit from chroot environment"
 
 	postchroot
