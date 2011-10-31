@@ -46,6 +46,7 @@ Actions:
     custom			Execute the customization scripts
     casper			Setting up for casper
     iso				Build the ISO image
+    chroot			Get a shell in chroot environment
     zsync			Build the zsync index file
     md5				Calculate MD5 of the output files
     bt				Make torrent files
@@ -174,6 +175,8 @@ do_action ()
 		do_casper ;;
 	    iso)
 		do_iso ;;
+	    chroot)
+		do_chroot ;;
 	    zsync)
 		do_zsync ;;
 	    bt)
