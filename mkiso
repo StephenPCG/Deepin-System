@@ -16,9 +16,6 @@ export ALL_DONE="false"
 
 source_local_if_exist "${WORK_PATH}/${SCRIPT_NAME}.conf"
 
-set -u -e -o pipefail
-trap exit_fail ERR TERM EXIT KILL
-
 clean_up ()
 {
     [[ -f "${CHROOT_LOCK}" ]] && postchroot
@@ -40,6 +37,7 @@ Options:
     -buildbase=BUILD_BASE	Where to put files used to build, default to ${BUILD_BASE}
     -copy-chroot-path=PATH	If specified, copy the PATH to CHROOT_PATH instead of building a real base
     -backup-chroot-path=PATH	If specified, copy the chroot path to PATH right after finishing building base 
+
 Actions:
     init			Initialization work, only need to do once in one host
     base			Bootstrap a base system
@@ -140,19 +138,21 @@ script_init ()
     source_local_if_exist "${CONF_PATH}/${DISTRO_NAME}.all.conf"
     source_local_if_exist "${CONF_PATH}/${DISTRO_NAME}.${ARCH}.conf"
 
-    echo_and_log "[MKISO]        ----- ISO parameters -----"
-    echo_and_log "[MKISO]     Distro Name: ${DISTRO_NAME}"
-    echo_and_log "[MKISO]  Distro Version: ${VERSION}"
-    echo_and_log "[MKISO]     Distro Arch: ${ARCH}"
-    echo_and_log "[MKISO]    Build Scheme: ${SCHEME}"
-    echo_and_log "[MKISO]     Output File: ${OUTPUT}"
-    echo_and_log "[MKISO]     Output Path: ${OUTPUT_PATH}"
-    echo_and_log "[MKISO]   ISO Full Path: ${ISO_FILE}"
-    echo_and_log "[MKISO]       Conf Path: ${CONF_PATH}"
-    echo_and_log "[MKISO]     Chroot Path: ${CHROOT_PATH}"
-    echo_and_log "[MKISO]  ISO Build Path: ${ISO_BUILD_PATH}"
-    echo_and_log "[MKISO]        Log PATH: ${LOG_PATH}"
-    echo_and_log "[MKISO]         Actions: ${ACTIONS}"
+    echo_and_log "[MKISO]           ----- ISO parameters -----"
+    echo_and_log "[MKISO]        Distro Name: ${DISTRO_NAME}"
+    echo_and_log "[MKISO]     Distro Version: ${VERSION}"
+    echo_and_log "[MKISO]        Distro Arch: ${ARCH}"
+    echo_and_log "[MKISO]       Build Scheme: ${SCHEME}"
+    echo_and_log "[MKISO]        Output File: ${OUTPUT}"
+    echo_and_log "[MKISO]        Output Path: ${OUTPUT_PATH}"
+    echo_and_log "[MKISO]      ISO Full Path: ${ISO_FILE}"
+    echo_and_log "[MKISO]          Conf Path: ${CONF_PATH}"
+    echo_and_log "[MKISO]        Chroot Path: ${CHROOT_PATH}"
+    echo_and_log "[MKISO]     ISO Build Path: ${ISO_BUILD_PATH}"
+    echo_and_log "[MKISO]           Log Path: ${LOG_PATH}"
+    echo_and_log "[MKISO]   Copy Chroot Path: ${COPY_CHROOT_PATH}"
+    echo_and_log "[MKISO] Backup Chroot Path: ${BACKUP_CHROOT_PATH}"
+    echo_and_log "[MKISO]            Actions: ${ACTIONS}"
     echo_and_log ""
 }
 
@@ -459,6 +459,9 @@ do_bt () {
 }
 
 [[ $# -eq 0 ]] && do_help && exit
+
+set -u -e -o pipefail
+trap exit_fail ERR TERM EXIT KILL
 
 check_commandline $*
 script_init
