@@ -48,9 +48,8 @@ Actions:
     iso				Build the ISO image
     chroot			Get a shell in chroot environment
     zsync			Build the zsync index file
-    md5				Calculate MD5 of the output files
+    hashsum			Generate md5sum/sha1sum/sha256sum to all iso files in output path
     bt				Make torrent files
-    all				Equal to base custom casper iso zsync md5 bt
     help			Display this help
     "
 }
@@ -179,18 +178,10 @@ do_action ()
 		do_chroot ;;
 	    zsync)
 		do_zsync ;;
+	    hashsum)
+		do_hashsum ;;
 	    bt)
 		do_bt ;;	
-	    all)
-		do_clean
-		do_base
-		do_custom
-		do_casper
-		do_iso
-		do_zsync
-		do_md5
-		do_bt
-		;;
 	    *)
 		echo "Unknown Action: $1"
 	esac
@@ -405,12 +396,12 @@ EOF
     echo_and_log "[ISO] Generating ISO: ${ISO_FILE} ..."
     [[ -d ${OUTPUT_PATH} ]] || mkdir -p ${OUTPUT_PATH}
     [[ -f ${ISO_FILE} ]] && sudo rm -f ${ISO_FILE}
-    sudo genisoimage -D -r -V "$DISTRO_NAME $VERSION (${ARCH})" -cache-inodes -J -l \
+    genisoimage -D -r -V "$DISTRO_NAME $VERSION (${ARCH})" -cache-inodes -J -l \
 	-b isolinux/isolinux.bin -c isolinux/boot.cat \
 	-no-emul-boot -boot-load-size 4 -boot-info-table \
 	-input-charset utf-8 \
 	-o ${ISO_FILE} . |& log
-    sudo isohybrid --partok ${ISO_FILE}
+    isohybrid --partok ${ISO_FILE}
 
     popd > /dev/null
 
@@ -437,11 +428,30 @@ do_chroot () {
 }
 
 do_zsync () {
-    echo "do_zsync is not implemented"
+    echo_and_log "[ZSYNC] Begin generating zsync index file ..."
+    [[ -d ${OUTPUT_PATH} ]] || exit_with_msg "[HASHSUM] Output path does not exist: ${OUTPUT_PATH}"
+    pushd ${OUTPUT_PATH} > /dev/null
+    zsyncmake ${OUTPUT} |& log
+    popd  > /dev/null
+    echo_and_log "[ZSYNC] Finished generating zsync index file: ${ISO_FILE}.zsync"
+    echo_and_log ""
 }
 
-do_md5 () {
-    echo "do_md5 is not implemented"
+do_hashsum () {
+    echo_and_log "[HASHSUM] Calculating hashsums for all iso files in: ${OUTPUT_PATH}"
+
+    [[ -d ${OUTPUT_PATH} ]] || exit_with_msg "[HASHSUM] Output path does not exist: ${OUTPUT_PATH}"
+
+    pushd ${OUTPUT_PATH} > /dev/null
+    echo_and_log "[HASHSUM] Calculating md5sums on all iso files ..."
+    md5sum *.iso | tee MD5SUMS | log
+    echo_and_log "[HASHSUM] Calculating sha1sums on all iso files ..."
+    sha1sum *.iso | tee SHA1SUMS | log
+    echo_and_log "[HASHSUM] Calculating sha256sums on all iso files ..."
+    sha256sum *.iso | tee SHA256SUMS | log
+    popd > /dev/null
+
+    echo_and_log "[HASHSUM] Finished calculating hashsums for all iso files."
 }
 
 do_bt () {
