@@ -396,6 +396,7 @@ EOF
     echo_and_log "[ISO] Generating ISO: ${ISO_FILE} ..."
     [[ -d ${OUTPUT_PATH} ]] || mkdir -p ${OUTPUT_PATH}
     [[ -f ${ISO_FILE} ]] && sudo rm -f ${ISO_FILE}
+    sudo chown `whoami` -R .
     genisoimage -D -r -V "$DISTRO_NAME $VERSION (${ARCH})" -cache-inodes -J -l \
 	-b isolinux/isolinux.bin -c isolinux/boot.cat \
 	-no-emul-boot -boot-load-size 4 -boot-info-table \
