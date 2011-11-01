@@ -17,6 +17,16 @@ sudo rm -rf ${CHROOT_PATH}/tmp/*
 #	| sudo tee "${CHROOT_PATH}/etc/apt/preferences" > /dev/null
 #fi
 
+# Xsession customize
+if [[ -n "${DEEPIN_XSESSION}"  ]]; then
+    echo "${DEEPIN_XSESSION}" \
+       | sudo tee "${CHROOT_PATH}/usr/share/xessions/deepin.desktop" > /dev/null
+fi
+if [[ -n "${LIGHTDM_SESSION}"  ]]; then
+    echo "${LIGHTDM_SESSION}" \
+       | sudo tee "${CHROOT_PATH}/etc/lightdm/lightdm.conf" > /dev/null
+fi
+
 # vim:set ts=8 sts=4 sw=4 ft=sh:
 
 
