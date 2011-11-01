@@ -20,7 +20,7 @@ sudo rm -rf ${CHROOT_PATH}/tmp/*
 # Xsession customize
 if [[ -n "${DEEPIN_XSESSION}"  ]]; then
     echo "${DEEPIN_XSESSION}" \
-       | sudo tee "${CHROOT_PATH}/usr/share/xessions/deepin.desktop" > /dev/null
+       | sudo tee "${CHROOT_PATH}/usr/share/xsessions/deepin.desktop" > /dev/null
 fi
 if [[ -n "${LIGHTDM_SESSION}"  ]]; then
     echo "${LIGHTDM_SESSION}" \
