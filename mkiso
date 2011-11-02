@@ -326,7 +326,7 @@ do_casper () {
     sudo du -sx --block-size=1 ${CHROOT_PATH} | cut -f1 > ${ISO_BUILD_PATH}/casper/filesystem.size
 
     echo_and_log "[CASPER] Generating filesystem.manifest ..."
-    sudo chroot ${CHROOT_PATH} dpkg-query -W --showformat='${Package} ${Version}\n' \
+    chroot_do ${CHROOT_PATH} dpkg-query -W --showformat='${Package} ${Version}\n' \
 	> ${ISO_BUILD_PATH}/casper/filesystem.manifest
 
     echo_and_log "[CASPER] Generating filesystem.manifest-desktop ..."

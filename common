@@ -76,7 +76,7 @@ chroot_do ()
 	LC_ALL=C \
 	PATH=/sbin:/bin:/usr/sbin:/usr/bin \
 	DEBIAN_FRONTEND=noninteractive \
-	$*
+	"$@"	
 }
 
 ## copy the script to $CHROOT_PATH/tmp/ and execute it
