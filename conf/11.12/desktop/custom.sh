@@ -15,7 +15,7 @@ if [[ -n "${OLD_SOURCES_LIST}" ]]; then
     echo "${OLD_SOURCES_LIST}" \
 	| sudo tee "${CHROOT_PATH}/etc/apt/sources.list" > /dev/null
 fi
-OLD_SOURCES_LIST=${OLD_APT_PREFERENCES:-}
+OLD_APT_PREFERENCES=${OLD_APT_PREFERENCES:-}
 if [[ -n "${OLD_APT_PREFERENCES}" ]]; then
     echo "${OLD_APT_PREFERENCES}" \
 	| sudo tee "${CHROOT_PATH}/etc/apt/preferences" > /dev/null
