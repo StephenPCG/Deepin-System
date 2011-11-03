@@ -8,14 +8,18 @@ sudo rm -rf ${CHROOT_PATH}/var/cache/debconf/*old
 sudo rm -rf ${CHROOT_PATH}/var/cache/apt-xapian-index/index*
 sudo rm -rf ${CHROOT_PATH}/tmp/*
 
-#if [[ -n "${OLD_SOURCES_LIST}" ]]; then
-#    echo "${OLD_SOURCES_LIST}" \
-#	| sudo tee "${CHROOT_PATH}/etc/apt/sources.list" > /dev/null
-#fi
-#if [[ -n "${OLD_APT_PREFERENCES}" ]]; then
-#    echo "${OLD_APT_PREFERENCES}" \
-#	| sudo tee "${CHROOT_PATH}/etc/apt/preferences" > /dev/null
-#fi
+# mkiso.conf.local may change the sources.list and apt_preferences file 
+# to use local mirror site, change it back after the iso is built
+OLD_SOURCES_LIST=${OLD_SOURCES_LIST:-}
+if [[ -n "${OLD_SOURCES_LIST}" ]]; then
+    echo "${OLD_SOURCES_LIST}" \
+	| sudo tee "${CHROOT_PATH}/etc/apt/sources.list" > /dev/null
+fi
+OLD_SOURCES_LIST=${OLD_APT_PREFERENCES:-}
+if [[ -n "${OLD_APT_PREFERENCES}" ]]; then
+    echo "${OLD_APT_PREFERENCES}" \
+	| sudo tee "${CHROOT_PATH}/etc/apt/preferences" > /dev/null
+fi
 
 # Xsession customize
 if [[ -n "${DEEPIN_XSESSION}"  ]]; then

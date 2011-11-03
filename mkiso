@@ -16,9 +16,6 @@ export ALL_DONE="false"
 
 source_local_if_exist "${WORK_PATH}/${SCRIPT_NAME}.conf"
 
-set -u -e -o pipefail
-trap exit_fail ERR TERM EXIT KILL
-
 clean_up ()
 {
     [[ -f "${CHROOT_LOCK}" ]] && postchroot
@@ -40,17 +37,17 @@ Options:
     -buildbase=BUILD_BASE	Where to put files used to build, default to ${BUILD_BASE}
     -copy-chroot-path=PATH	If specified, copy the PATH to CHROOT_PATH instead of building a real base
     -backup-chroot-path=PATH	If specified, copy the chroot path to PATH right after finishing building base 
+
 Actions:
     init			Initialization work, only need to do once in one host
     base			Bootstrap a base system
     custom			Execute the customization scripts
     casper			Setting up for casper
-    chroot			Change root to the live file system (usefull for troubleshooting)
     iso				Build the ISO image
+    chroot			Get a shell in chroot environment
     zsync			Build the zsync index file
-    md5				Calculate MD5 of the output files
+    hashsum			Generate md5sum/sha1sum/sha256sum to all iso files in output path
     bt				Make torrent files
-    all				Equal to base custom casper iso zsync md5 bt
     help			Display this help
     "
 }
@@ -141,19 +138,21 @@ script_init ()
     source_local_if_exist "${CONF_PATH}/${DISTRO_NAME}.all.conf"
     source_local_if_exist "${CONF_PATH}/${DISTRO_NAME}.${ARCH}.conf"
 
-    echo_and_log "[MKISO]        ----- ISO parameters -----"
-    echo_and_log "[MKISO]     Distro Name: ${DISTRO_NAME}"
-    echo_and_log "[MKISO]  Distro Version: ${VERSION}"
-    echo_and_log "[MKISO]     Distro Arch: ${ARCH}"
-    echo_and_log "[MKISO]    Build Scheme: ${SCHEME}"
-    echo_and_log "[MKISO]     Output File: ${OUTPUT}"
-    echo_and_log "[MKISO]     Output Path: ${OUTPUT_PATH}"
-    echo_and_log "[MKISO]   ISO Full Path: ${ISO_FILE}"
-    echo_and_log "[MKISO]       Conf Path: ${CONF_PATH}"
-    echo_and_log "[MKISO]     Chroot Path: ${CHROOT_PATH}"
-    echo_and_log "[MKISO]  ISO Build Path: ${ISO_BUILD_PATH}"
-    echo_and_log "[MKISO]        Log PATH: ${LOG_PATH}"
-    echo_and_log "[MKISO]         Actions: ${ACTIONS}"
+    echo_and_log "[MKISO]           ----- ISO parameters -----"
+    echo_and_log "[MKISO]        Distro Name: ${DISTRO_NAME}"
+    echo_and_log "[MKISO]     Distro Version: ${VERSION}"
+    echo_and_log "[MKISO]        Distro Arch: ${ARCH}"
+    echo_and_log "[MKISO]       Build Scheme: ${SCHEME}"
+    echo_and_log "[MKISO]        Output File: ${OUTPUT}"
+    echo_and_log "[MKISO]        Output Path: ${OUTPUT_PATH}"
+    echo_and_log "[MKISO]      ISO Full Path: ${ISO_FILE}"
+    echo_and_log "[MKISO]          Conf Path: ${CONF_PATH}"
+    echo_and_log "[MKISO]        Chroot Path: ${CHROOT_PATH}"
+    echo_and_log "[MKISO]     ISO Build Path: ${ISO_BUILD_PATH}"
+    echo_and_log "[MKISO]           Log Path: ${LOG_PATH}"
+    echo_and_log "[MKISO]   Copy Chroot Path: ${COPY_CHROOT_PATH}"
+    echo_and_log "[MKISO] Backup Chroot Path: ${BACKUP_CHROOT_PATH}"
+    echo_and_log "[MKISO]            Actions: ${ACTIONS}"
     echo_and_log ""
 }
 
@@ -171,26 +170,18 @@ do_action ()
 		do_base ;;
 	    custom)
 		do_custom ;;
-	    chroot)
-		do_chroot ;;
 	    casper)
 		do_casper ;;
 	    iso)
 		do_iso ;;
+	    chroot)
+		do_chroot ;;
 	    zsync)
 		do_zsync ;;
+	    hashsum)
+		do_hashsum ;;
 	    bt)
 		do_bt ;;	
-	    all)
-		do_clean
-		do_base
-		do_custom
-		do_casper
-		do_iso
-		do_zsync
-		do_md5
-		do_bt
-		;;
 	    *)
 		echo "Unknown Action: $1"
 	esac
@@ -225,13 +216,6 @@ prechroot () {
 
     [[ -d ${APT_ARCHIVE_PATH} ]] || mkdir -p ${APT_ARCHIVE_PATH}
     sudo mount --bind ${APT_ARCHIVE_PATH} ${CHROOT_PATH}/var/cache/apt/archives/
-}
-
-do_chroot ()
-{
-    prechroot
-    sudo chroot ${CHROOT_PATH}
-    postchroot
 }
 
 postchroot () {
@@ -342,7 +326,7 @@ do_casper () {
     sudo du -sx --block-size=1 ${CHROOT_PATH} | cut -f1 > ${ISO_BUILD_PATH}/casper/filesystem.size
 
     echo_and_log "[CASPER] Generating filesystem.manifest ..."
-    sudo chroot ${CHROOT_PATH} dpkg-query -W --showformat='${Package} ${Version}\n' \
+    chroot_do ${CHROOT_PATH} dpkg-query -W --showformat='${Package} ${Version}\n' \
 	> ${ISO_BUILD_PATH}/casper/filesystem.manifest
 
     echo_and_log "[CASPER] Generating filesystem.manifest-desktop ..."
@@ -412,12 +396,19 @@ EOF
     echo_and_log "[ISO] Generating ISO: ${ISO_FILE} ..."
     [[ -d ${OUTPUT_PATH} ]] || mkdir -p ${OUTPUT_PATH}
     [[ -f ${ISO_FILE} ]] && sudo rm -f ${ISO_FILE}
-    sudo genisoimage -D -r -V "$DISTRO_NAME $VERSION (${ARCH})" -cache-inodes -J -l \
+    sudo chown `whoami` -R .
+    genisoimage -D -r -V "$DISTRO_NAME $VERSION (${ARCH})" -cache-inodes -J -l \
 	-b isolinux/isolinux.bin -c isolinux/boot.cat \
 	-no-emul-boot -boot-load-size 4 -boot-info-table \
 	-input-charset utf-8 \
 	-o ${ISO_FILE} . |& log
-    sudo isohybrid --partok ${ISO_FILE}
+    isohybrid --partok ${ISO_FILE}
+
+    OUTPUT_BASENAME=$(basename ${OUTPUT} .iso)
+    echo_and_log "[ISO] Generating ${OUTPUT_BASENAME}.list ..."
+    find . -type f | cut -c 2- > ${OUTPUT_PATH}/${OUTPUT_BASENAME}.list
+    echo_and_log "[ISO] Generating ${OUTPUT_BASENAME}.manifest ..."
+    cp ${ISO_BUILD_PATH}/casper/filesystem.manifest ${OUTPUT_PATH}/${OUTPUT_BASENAME}.manifest
 
     popd > /dev/null
 
@@ -444,11 +435,30 @@ do_chroot () {
 }
 
 do_zsync () {
-    echo "do_zsync is not implemented"
+    echo_and_log "[ZSYNC] Begin generating zsync index file ..."
+    [[ -d ${OUTPUT_PATH} ]] || exit_with_msg "[HASHSUM] Output path does not exist: ${OUTPUT_PATH}"
+    pushd ${OUTPUT_PATH} > /dev/null
+    zsyncmake -C ${OUTPUT} |& log
+    popd  > /dev/null
+    echo_and_log "[ZSYNC] Finished generating zsync index file: ${ISO_FILE}.zsync"
+    echo_and_log ""
 }
 
-do_md5 () {
-    echo "do_md5 is not implemented"
+do_hashsum () {
+    echo_and_log "[HASHSUM] Calculating hashsums for all iso files in: ${OUTPUT_PATH}"
+
+    [[ -d ${OUTPUT_PATH} ]] || exit_with_msg "[HASHSUM] Output path does not exist: ${OUTPUT_PATH}"
+
+    pushd ${OUTPUT_PATH} > /dev/null
+    echo_and_log "[HASHSUM] Calculating md5sums on all iso files ..."
+    md5sum *.iso | tee MD5SUMS | log
+    echo_and_log "[HASHSUM] Calculating sha1sums on all iso files ..."
+    sha1sum *.iso | tee SHA1SUMS | log
+    echo_and_log "[HASHSUM] Calculating sha256sums on all iso files ..."
+    sha256sum *.iso | tee SHA256SUMS | log
+    popd > /dev/null
+
+    echo_and_log "[HASHSUM] Finished calculating hashsums for all iso files."
 }
 
 do_bt () {
@@ -456,6 +466,9 @@ do_bt () {
 }
 
 [[ $# -eq 0 ]] && do_help && exit
+
+set -u -e -o pipefail
+trap exit_fail ERR TERM EXIT KILL
 
 check_commandline $*
 script_init

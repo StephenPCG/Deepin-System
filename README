@@ -1,0 +1,162 @@
+Deepin Live CD Build tool. 
+
+This tool is used to build deepin Live CDs, it can also used to build
+customized Live CD based on Ubuntu (and future on Debian, too).
+
+-- Contents --
+* 1. Basic Usage
+* 2. Actions
+* 3. Options
+* 4. Configuration files
+* 5. Known issues
+
+1. Basic Usage
+First, use the following command to install required tools to build Deepin
+Live CD:
+    
+    ./mkiso init
+
+Then just type the following command:
+
+  ./mkiso base custom casper iso zsync hashsum
+
+it will build the latest Deepin Live CD image in ./output, with the same 
+arch of your host. 
+
+2. Actions
+The build process contain several actions, do_init, do_base, do_custom, 
+do_casper, do_iso, do_zsync, do_hashsum and do_bt.
+
+do_init: 
+    This action only have to be performed once on a host, it will
+    install the required tools to build lice cd iso images.
+
+do_base: 
+    Use debootstrap to build a base system, and then install some 
+    packages in the base system. The mirror used to build base system and
+    codename can be set in ./mkiso.conf. Other options also can be set via
+    cmd params and/or in ./mkiso.conf
+
+do_custom: 
+    Do some more custom stuff in the base system. 
+
+do_casper:
+    Setup casper dir for Live CD, which is required by casper package, 
+    used to boot the live cd.
+
+do_iso:
+    Generate other files for Live CD, and finaly genisoimage.
+
+do_zsync:
+    Make zsync index file, for zsync clients to download.
+
+do_hashsum:
+    Calculate md5sum, sha1sum and sha256sum for all iso images in the output
+    dir.
+
+do_bt:
+    Generate torrent file for bt download. This action is not implemented yet.
+
+3. Options
+There are several options you can specify on command line.
+
+-arch=i386|amd64
+    By default, the script will build a live cd of the host arch. On x86_64
+    host, you can also build i386 live cd. However, you can not do vice
+    versa.
+
+-scheme=SCHEME
+    You may have different schemes like ubuntu-desktop, kubuntu, xubuntu, 
+    etc. You just have to write configuration files for different schemes,
+    and let the script use them. The default scheme is "default", which is
+    a symbol link to desktop, you can change it to other scheme by changing
+    the link destination of ./conf/VERSION/default.
+
+-version=11.12|12.06|...
+    Which version of your system you are going to build. The default 
+    version is "current", which is a symbol link to 11.12 currently. You 
+    can change it to other version by changing the link destination of 
+    ./conf/current.
+
+-output=FILENAME
+    The filename of output iso image. The default is:
+    ${DISTRO_NAME}-${SCHEME}-${ARCH}.iso
+
+-outputbase=OUTPUT_BASE
+    Where to put output files (*.iso, MD5SUMS, *.zsync, etc.)
+    The output dir will be:
+    ${OUTPUT_BASE}/${VERSIOn}/${SCHEME}/daily-live/$(date +%Y%m%d)/
+
+-buildbase=BUILD_BASE
+    Where to put temp file for build process. The base system and iso 
+    filesystem structure will be put in:
+    ${BUILD_BASE}/${VERSION}/${SCHEME}/${ARCH}/{chroot,iso}
+    It is recommend to mount a 4g or larger tmpfs on BUILD_BASE to speedup
+    the build process if you have sufficient memory:
+
+    # mount -t tmpfs -o size=4g tmpfs BUILD_BASE/
+
+-copy-chroot-path=COPY_CHROOT_PATH
+    If you already have a CHROOT dir on which a full do_base is done, you
+    can tell the script to skip the do_base action, and copy files from
+    COPY_CHROOT_PATH to save time. 
+
+    do_base is a quite time coconsuming task, but it is quite stable in a 
+    short time. So you only have to performance do_base once a day or a 
+    week, except for major script modifications.
+
+-backup-chroot-path=BACKUP_CHROOT_PATH
+    If you specified a BACKUP_CHROOT_PATH, after do_base is done, the 
+    script will copy the CHROOT dir to BACKUP_CHROOT_PATH, so the next time
+    you can use -copy-chroot-path to save time.
+
+4. Configuration files
+There are several configuration files to help build the live cd. There are 
+mainly two types of configuration files, suffixed with .conf and .sh.
+Both of them are written as bash script, but usually, we only do VARIABLE
+assignment in .conf files, and may do more actions in .sh files. They are 
+not meant to be executed seperately, so they do not have x permission, they
+are sourced in the main script, mkiso.
+
+Very commonly, you will have some local configurations, like the mirror to
+use in debootstrap phase, you can create a "local version" of .conf files.
+e.g. you can create a conf/current/default/mkiso.conf.local, in which you 
+can overwrite variables set in .../mkiso.conf. All .local files are sourced
+after the relevant .conf file, if exists. *.local files are not tracked by
+git.
+
+./mkiso.conf{,.local}
+   Global settings for building live cd. You can set OUTPUT_BASE, 
+   BUILD_BASE, LOG_BASE, etc in this file.
+
+./conf/${VERSION}/${SCHEME}/mkiso.conf{,.local}
+   Settings related to the to-be-build live cd, like DISTRO_NAME, 
+   CODENAME, etc.
+
+./conf/${VERSION}/${SCHEME}/custom.chroot.sh
+    This script will be copied to the CHROOT_PATH and executed in chroot 
+    evn, by do_custom action.
+
+./conf/${VERSION}/${SCHEME}/custom.sh
+    This script is also executed by do_custom aciton, but no in the host
+    env. This script is invoked after custom.chroot.sh.
+
+5. Known issues
+    1) This tool can be used on any distro that have debootstrap tool. On
+    distros which do not have APT system, you will have to modify do_init
+    action to use the right package manager to install the required tools.
+    There may be also other issues, you have to find out yourself, I haven't
+    tested it on any distro other than debian/ubuntu/deepin.
+
+    2) On some distros with old debootstrap, it may not contain the codename
+    you want to use, e.g., on Debian Squeeze, there is not "oneiric" in 
+    debootstrap script, you should upgrade debootstrap youself. Most codename
+    share the same debootstrap scripts, so you can just make a soft link other
+    than upgrade debootstrap:
+
+    ln -s gutsy /usr/share/debootstrap/scripts/oneiric
+
+    3) On Debian sid, there is a bug while installing cups-pdf package in 
+    chroot env, the dpkg will pause and wait the user to hit enter to 
+    continue. The same problem doesn't appear with Debian Squeeze and Ubuntu.
+
