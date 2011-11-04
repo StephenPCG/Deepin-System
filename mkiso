@@ -48,6 +48,7 @@ Actions:
     chroot			Get a shell in chroot environment
     zsync			Build the zsync index file
     hashsum			Generate md5sum/sha1sum/sha256sum to all iso files in output path
+    dailylink			Update daily directory link
     bt				Make torrent files
     help			Display this help
     "
@@ -183,6 +184,8 @@ do_action ()
 		do_zsync ;;
 	    hashsum)
 		do_hashsum ;;
+	    dailylink)
+		do_dailylink ;;
 	    bt)
 		do_bt ;;	
 	    *)
@@ -464,6 +467,14 @@ do_hashsum () {
     popd > /dev/null
 
     echo_and_log "[HASHSUM] Finished calculating hashsums for all iso files."
+}
+
+do_dailylink () {
+    DAILY_DIR=$(dirname ${OUTPUT_PATH})
+    DAILY_BASE=$(basename ${OUTPUT_PATH})
+    echo_and_log "[DAILYLINK] Update daily link: ${DAILY_DIR}/current -> ${DAILY_BASE})"
+    [[ -d ${OUTPUT_PATH} ]] || echo_and_log "[DAILYLINK][Warning] Daily output path does not exist: ${OUTPUT_PATH}"
+    ln -snf ${DAILY_BASE} ${DAILY_DIR}/current
 }
 
 do_bt () {
