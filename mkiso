@@ -299,6 +299,8 @@ do_desktop () {
 	-y --force-yes \
 	--allow-unauthenticated \
 	${DEFAULT_PACKAGES} |& log
+    echo_and_log "[DESKTOP] Remove packages ..."
+    chroot_do ${CHROOT_PATH} apt-get purge ${PACKAGES_TO_BE_REMOVED} |& log
     postchroot
     echo_and_log "[DESKTOP] Install default packages finished"
 }
@@ -418,6 +420,7 @@ EOF
     popd > /dev/null
 
     echo_and_log "[ISO] Successfully generated ISO image: ${ISO_FILE} :)"
+    echo_and_log "[ISO] Size: `ls -lh ${ISO_FILE} |awk '{print $5}'`"
     echo_and_log ""
 }
 
