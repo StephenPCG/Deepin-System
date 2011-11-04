@@ -41,6 +41,7 @@ Options:
 Actions:
     init			Initialization work, only need to do once in one host
     base			Bootstrap a base system
+    desktop			Install deepin-desktop related packages
     custom			Execute the customization scripts
     casper			Setting up for casper
     iso				Build the ISO image
@@ -168,6 +169,8 @@ do_action ()
 		do_init ;;
 	    base)
 		do_base ;;
+	    desktop)
+		do_desktop ;;
 	    custom)
 		do_custom ;;
 	    casper)
@@ -249,20 +252,6 @@ do_regular_base () {
     sudo debootstrap --arch=${ARCH} --include=dbus ${CODENAME} ${CHROOT_PATH} ${DEBOOTSTRAP_MIRROR} | log
     echo_and_log "[BASE] Build base system finished"
 
-    echo_and_log "[BASE] Installing default packages defined by scheme ..."
-    prechroot
-    echo_and_log "[BASE] Default packages are: ${DEFAULT_PACKAGES}"
-    echo "${SOURCES_LIST}" | sudo tee "${CHROOT_PATH}/etc/apt/sources.list" > /dev/null
-    echo "${APT_PREFERENCES}" | sudo tee "${CHROOT_PATH}/etc/apt/preferences" > /dev/null
-    wget -q "${DEEPIN_APTKEY_URL}" -O- | chroot_do ${CHROOT_PATH} apt-key add - > /dev/null
-    chroot_do ${CHROOT_PATH} apt-get --allow-unauthenticated update |& log
-    chroot_do ${CHROOT_PATH} apt-get install \
-	--no-install-recommends -y --force-yes \
-	--allow-unauthenticated \
-	${DEFAULT_PACKAGES} |& log
-    postchroot
-    echo_and_log "[BASE] Install default packages finished"
-    
     if [ -n "$BACKUP_CHROOT_PATH" ]; then
 	echo_and_log "[BASE] Backing up CHROOT_PATH to BACKUP_CHROOT_PATH (${BACKUP_CHROOT_PATH}) ..."
 	[[ -d $(dirname ${BACKUP_CHROOT_PATH}) ]] || mkdir -p $(dirname ${BACKUP_CHROOT_PATH})
@@ -296,6 +285,22 @@ do_base () {
     fi
 
     echo_and_log ""
+}
+
+do_desktop () {
+    echo_and_log "[DESKTOP] Installing default packages defined by scheme ..."
+    prechroot
+    echo_and_log "[DESKTOP] Default packages are: ${DEFAULT_PACKAGES}"
+    echo "${SOURCES_LIST}" | sudo tee "${CHROOT_PATH}/etc/apt/sources.list" > /dev/null
+    echo "${APT_PREFERENCES}" | sudo tee "${CHROOT_PATH}/etc/apt/preferences" > /dev/null
+    wget -q "${DEEPIN_APTKEY_URL}" -O- | chroot_do ${CHROOT_PATH} apt-key add - > /dev/null
+    chroot_do ${CHROOT_PATH} apt-get --allow-unauthenticated update |& log
+    chroot_do ${CHROOT_PATH} apt-get install \
+	-y --force-yes \
+	--allow-unauthenticated \
+	${DEFAULT_PACKAGES} |& log
+    postchroot
+    echo_and_log "[DESKTOP] Install default packages finished"
 }
 
 do_custom () {
