@@ -306,10 +306,12 @@ do_desktop () {
 	-y --force-yes \
 	--allow-unauthenticated \
 	${DEFAULT_PACKAGES} |& log
-    echo_and_log "[DESKTOP] Remove packages ..."
-    chroot_do ${CHROOT_PATH} apt-get purge ${PACKAGES_TO_BE_REMOVED} |& log
+    echo_and_log "[DESKTOP] Packages installed, now removing packages no needed ..."
+    chroot_do ${CHROOT_PATH} apt-get purge --yes --force-yes ${PACKAGES_TO_BE_REMOVED} |& log
+    chroot_do ${CHROOT_PATH} purge |& log
+
     postchroot
-    echo_and_log "[DESKTOP] Install default packages finished"
+    echo_and_log "[DESKTOP] Installation finished"
 }
 
 do_custom () {
