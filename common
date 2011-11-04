@@ -9,7 +9,7 @@
 exit_fail ()
 {
     if [ "$ALL_DONE" == "true" ]; then exit 0; fi
-    echo_and_log "[ERROR] The building process failed, see log file for more details: ${LOG_FILE}.0"
+    echo_and_log "[ERROR] The building process failed, see log file for more details: ${LOG_FILE}"
     clean_up
     exit 1
 }

@@ -20,7 +20,6 @@ clean_up ()
 {
     [[ -f "${CHROOT_LOCK}" ]] && postchroot
     [[ -f "${BUILD_LOCK}" ]] && rm ${BUILD_LOCK}
-    savelog -q ${LOG_FILE} 
 }
 
 do_help ()
@@ -48,6 +47,7 @@ Actions:
     chroot			Get a shell in chroot environment
     zsync			Build the zsync index file
     hashsum			Generate md5sum/sha1sum/sha256sum to all iso files in output path
+    dailylink			Update daily directory link
     bt				Make torrent files
     help			Display this help
     "
@@ -129,9 +129,14 @@ script_init ()
 
     APT_ARCHIVE_PATH="${APT_ARCHIVE_BASE}/${VERSION}/${ARCH}"
 
+    ## Don't use savelog to rotate log, instead, save all logs,
+    ## postfix with the log start time
     LOG_PATH="${LOG_BASE}/${VERSION}/${SCHEME}/${ARCH}"
-    LOG_FILE="${LOG_PATH}/${SCRIPT_NAME}.log"
+    LOG_TIME="$(date +%Y%m%d%H%M%S)"
+    LOG_FILE="${LOG_PATH}/${SCRIPT_NAME}.log.${LOG_TIME}"
     [[ -d "${LOG_PATH}" ]] || mkdir -p ${LOG_PATH}
+    ## mkiso.log points to the latest log
+    ln -sf ${SCRIPT_NAME}.log.${LOG_TIME} ${LOG_PATH}/${SCRIPT_NAME}.log
 
     BUILD_LOCK="/tmp/${SCRIPT_NAME}-${VERSION}-${SCHEME}-${ARCH}.lock"
     CHROOT_LOCK="/tmp/${SCRIPT_NAME}-${VERSION}-${SCHEME}-${ARCH}-chroot.lock"
@@ -183,6 +188,8 @@ do_action ()
 		do_zsync ;;
 	    hashsum)
 		do_hashsum ;;
+	    dailylink)
+		do_dailylink ;;
 	    bt)
 		do_bt ;;	
 	    *)
@@ -469,6 +476,14 @@ do_hashsum () {
     echo_and_log "[HASHSUM] Finished calculating hashsums for all iso files."
 }
 
+do_dailylink () {
+    DAILY_DIR=$(dirname ${OUTPUT_PATH})
+    DAILY_BASE=$(basename ${OUTPUT_PATH})
+    echo_and_log "[DAILYLINK] Update daily link: ${DAILY_DIR}/current -> ${DAILY_BASE})"
+    [[ -d ${OUTPUT_PATH} ]] || echo_and_log "[DAILYLINK][Warning] Daily output path does not exist: ${OUTPUT_PATH}"
+    ln -snf ${DAILY_BASE} ${DAILY_DIR}/current
+}
+
 do_bt () {
     echo "do_bt is not implemented"
 }
@@ -487,9 +502,8 @@ lockfile ${BUILD_LOCK}
 do_action ${ACTIONS}
 
 echo_and_log "[MKISO] Finished executing actions: ${ACTIONS}"
-echo_and_log "[MKISO] See log for more details: ${LOG_FILE}.0"
+echo_and_log "[MKISO] See log for more details: ${LOG_FILE}"
 
-rm -f ${BUILD_LOCK}
 clean_up
 
 export ALL_DONE="true"
