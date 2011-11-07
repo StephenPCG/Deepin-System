@@ -295,20 +295,20 @@ do_base () {
 }
 
 do_desktop () {
-    echo_and_log "[DESKTOP] Installing default packages defined by scheme ..."
+    echo_and_log "[DESKTOP] Installing packages defined by scheme ..."
     prechroot
-    echo_and_log "[DESKTOP] Default packages are: ${DEFAULT_PACKAGES}"
+    echo_and_log "[DESKTOP] Packages are: ${DEFAULT_PACKAGES} ${OTHER_PACKAGES}"
     echo "${SOURCES_LIST}" | sudo tee "${CHROOT_PATH}/etc/apt/sources.list" > /dev/null
     echo "${APT_PREFERENCES}" | sudo tee "${CHROOT_PATH}/etc/apt/preferences" > /dev/null
     wget -q "${DEEPIN_APTKEY_URL}" -O- | chroot_do ${CHROOT_PATH} apt-key add - > /dev/null
     chroot_do ${CHROOT_PATH} apt-get --allow-unauthenticated update |& log
     chroot_do ${CHROOT_PATH} apt-get install \
-	-y --force-yes \
+	--no-install-recommends -y --force-yes \
 	--allow-unauthenticated \
-	${DEFAULT_PACKAGES} |& log
-    echo_and_log "[DESKTOP] Packages installed, now removing packages no needed ..."
-    chroot_do ${CHROOT_PATH} apt-get purge --yes --force-yes ${PACKAGES_TO_BE_REMOVED} |& log
-    chroot_do ${CHROOT_PATH} purge |& log
+	${DEFAULT_PACKAGES} ${OTHER_PACKAGES} |& log
+#    echo_and_log "[DESKTOP] Packages installed, now removing packages no needed ..."
+#    chroot_do ${CHROOT_PATH} apt-get purge --yes --force-yes ${PACKAGES_TO_BE_REMOVED} |& log
+#    chroot_do ${CHROOT_PATH} purge |& log
 
     postchroot
     echo_and_log "[DESKTOP] Installation finished"
