@@ -203,8 +203,12 @@ do_init () {
     echo_and_log "[INIT] Initialize the host system to build ISO"
 
     echo_and_log "[INIT] Installing tools need to build ISO"
+    echo_and_log "[INIT] Tools to be installed: debootstrap squashfs-tools genisoimage syslinux lzma mktorrent zsync"
     sudo apt-get install -y --no-install-recommends \
 	debootstrap squashfs-tools genisoimage syslinux lzma mktorrent zsync | log
+    echo_and_log "[INIT] Checking if code name oneiric exists ..."
+    [[ -e /usr/share/debootstrap/scripts/oneiric ]] \
+	|| sudo ln -s gutsy /usr/share/debootstrap/scripts/oneiric
 
     echo_and_log "[INIT] Finished initialization :-)"
     echo_and_log ""
