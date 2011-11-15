@@ -3,7 +3,7 @@
 ## 张  成 (Stephen) <zhangcheng@linuxdeepin.com>
 
 echo "[CUSTOM][CHROOT] Deleting unused locale files ..."
-cat > /etc/local.nopurge <<EOF
+cat > /etc/locale.nopurge <<EOF
 MANDELETE
 DONTBOTHERNEWLOCALE
 SHOWFREEDSPACE

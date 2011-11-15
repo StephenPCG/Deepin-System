@@ -252,6 +252,7 @@ postchroot () {
 
 do_clean () {
     echo "do_clean is not implemented"
+    clean_up
 }
 
 do_regular_base () {
