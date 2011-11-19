@@ -227,6 +227,8 @@ prechroot () {
     sudo chroot ${CHROOT_PATH} dbus-uuidgen | sudo tee ${CHROOT_PATH}/var/lib/dbus/machine-id | log
     sudo chroot ${CHROOT_PATH} dpkg-divert --local --rename --add /sbin/initctl | log
     sudo chroot ${CHROOT_PATH} ln -s /bin/true /sbin/initctl | log
+    sudo echo -e "#!/bin/sh\nexit 101" > ${CHROOT_PATH}/usr/sbin/policy-rc.d
+    sudo chmod +x ${CHROOT_PATH}/usr/sbin/policy-rc.d
 
     [[ -d ${APT_ARCHIVE_PATH} ]] || mkdir -p ${APT_ARCHIVE_PATH}
     sudo mount --bind ${APT_ARCHIVE_PATH} ${CHROOT_PATH}/var/cache/apt/archives/
@@ -244,6 +246,7 @@ postchroot () {
     sudo umount ${CHROOT_PATH}/dev -lf
     [[ -f "${CHROOT_PATH}/var/lib/dbus/machine-id" ]] && sudo rm -f ${CHROOT_PATH}/var/lib/dbus/machine-id
     [[ -f "${CHROOT_PATH}/sbin/initctl" ]] && sudo rm -f ${CHROOT_PATH}/sbin/initctl
+    [[ -f "${CHROOT_PATH}/usr/sbin/policy-rc.d" ]] && sudo rm -f ${CHROOT_PATH}/usr/sbin/policy-rc.d
     sudo chroot ${CHROOT_PATH} dpkg-divert --rename --remove /sbin/initctl |& log
     sudo umount ${CHROOT_PATH}/var/cache/apt/archives/ -lf
 
