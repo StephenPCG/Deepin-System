@@ -227,7 +227,7 @@ prechroot () {
     sudo chroot ${CHROOT_PATH} dbus-uuidgen | sudo tee ${CHROOT_PATH}/var/lib/dbus/machine-id | log
     sudo chroot ${CHROOT_PATH} dpkg-divert --local --rename --add /sbin/initctl | log
     sudo chroot ${CHROOT_PATH} ln -s /bin/true /sbin/initctl | log
-    sudo echo -e "#!/bin/sh\nexit 101" > ${CHROOT_PATH}/usr/sbin/policy-rc.d
+    echo -e "#!/bin/sh\nexit 101" | sudo tee ${CHROOT_PATH}/usr/sbin/policy-rc.d | log
     sudo chmod +x ${CHROOT_PATH}/usr/sbin/policy-rc.d
 
     [[ -d ${APT_ARCHIVE_PATH} ]] || mkdir -p ${APT_ARCHIVE_PATH}
@@ -237,18 +237,18 @@ prechroot () {
 postchroot () {
     [[ -f ${CHROOT_LOCK} ]] || exit_with_msg "[POSTCHROOT] CHROOT_LOCK file does not exist, did you run postchroot by actident?"
 
-    sudo chroot ${CHROOT_PATH} umount /proc -lf
-    sudo chroot ${CHROOT_PATH} umount /sys -lf
-    sudo chroot ${CHROOT_PATH} umount /dev/pts -lf
+    sudo chroot ${CHROOT_PATH} umount /proc
+    sudo chroot ${CHROOT_PATH} umount /sys
+    sudo chroot ${CHROOT_PATH} umount /dev/pts
     sudo rm -rf ${CHROOT_PATH}/tmp/* ${CHROOT_PATH}/root/.bash_history
     sudo rm -f ${CHROOT_PATH}/etc/hosts
     sudo rm -f ${CHROOT_PATH}/etc/resolv.conf
-    sudo umount ${CHROOT_PATH}/dev -lf
+    sudo umount ${CHROOT_PATH}/dev
     [[ -f "${CHROOT_PATH}/var/lib/dbus/machine-id" ]] && sudo rm -f ${CHROOT_PATH}/var/lib/dbus/machine-id
     [[ -f "${CHROOT_PATH}/sbin/initctl" ]] && sudo rm -f ${CHROOT_PATH}/sbin/initctl
     [[ -f "${CHROOT_PATH}/usr/sbin/policy-rc.d" ]] && sudo rm -f ${CHROOT_PATH}/usr/sbin/policy-rc.d
     sudo chroot ${CHROOT_PATH} dpkg-divert --rename --remove /sbin/initctl |& log
-    sudo umount ${CHROOT_PATH}/var/cache/apt/archives/ -lf
+    sudo umount ${CHROOT_PATH}/var/cache/apt/archives/
 
     rm -f ${CHROOT_LOCK}
 }
@@ -309,6 +309,8 @@ do_desktop () {
     echo "${SOURCES_LIST}" | sudo tee "${CHROOT_PATH}/etc/apt/sources.list" > /dev/null
     echo "${APT_PREFERENCES}" | sudo tee "${CHROOT_PATH}/etc/apt/preferences" > /dev/null
     wget -q "${DEEPIN_APTKEY_URL}" -O- | chroot_do ${CHROOT_PATH} apt-key add - > /dev/null
+    wget -q "${MEDIBUNTU_APTKEY_URL}" -O- | chroot_do ${CHROOT_PATH} apt-key add - > /dev/null
+    wget -q "${GOOGLE_APTKEY_URL}" -O- | chroot_do ${CHROOT_PATH} apt-key add - > /dev/null
     chroot_do ${CHROOT_PATH} apt-get --allow-unauthenticated update |& log
     chroot_do ${CHROOT_PATH} apt-get install \
 	--no-install-recommends -y --force-yes \
