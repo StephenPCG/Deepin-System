@@ -3,7 +3,7 @@
 ## 张  成 (Stephen) <zhangcheng@linuxdeepin.com>
 
 echo "[CUSTOM][CHROOT] Deleting unused locale files ..."
-cat > /etc/local.nopurge <<EOF
+cat > /etc/locale.nopurge <<EOF
 MANDELETE
 DONTBOTHERNEWLOCALE
 SHOWFREEDSPACE
@@ -28,9 +28,6 @@ localepurge
 
 echo "[CUSTOM][CHROOT] Mark all packages as manual installed ..."
 aptitude unmarkauto ~M
-
-#echo "[CUSTOM][CHROOT] Fix yozo office font issue ..."
-#yz-fonts
 
 echo "[CUSTOM][CHROOT] Deleting unused lanaguages ..."
 LANGLIST='am ar ast be bg bn bs ca cs da de dz el eo es et eu fa fi fr ga gl gu he hi hr hu id is it ja ka kk km ko ku lt lv mk ml mr  nb ne nl nn no pa pl pt pt_br ro ru sk sl sq sr sv ta te th tl tr uk vi'
