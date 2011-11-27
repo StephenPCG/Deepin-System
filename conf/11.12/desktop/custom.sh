@@ -7,6 +7,9 @@ sudo rm -rf ${CHROOT_PATH}/var/cache/man/*
 sudo rm -rf ${CHROOT_PATH}/var/cache/debconf/*old
 sudo rm -rf ${CHROOT_PATH}/var/cache/apt-xapian-index/index*
 sudo rm -rf ${CHROOT_PATH}/tmp/*
+## files in this dir is downloaded by debootstrap, we should not 
+## clean them in chroot env, since APT_ARCHIVE_PATH is mounted
+sudo rm -rf ${CHROOT_PATH}/var/cache/apt/archives/*.deb
 
 # mkiso.conf.local may change the sources.list and apt_preferences file 
 # to use local mirror site, change it back after the iso is built
