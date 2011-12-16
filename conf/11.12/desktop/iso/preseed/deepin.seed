@@ -1,5 +1,5 @@
 # Language and country.
-#d-i 	debian-installer/locale string zh_CN
+d-i 	debian-installer/locale string zh_CN.UTF-8
 
 # Keyboard 
 d-i 	console-setup/ask_detect boolean false
