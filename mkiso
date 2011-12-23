@@ -385,7 +385,7 @@ do_iso () {
 	&& cp -r ${CONF_PATH}/iso/isolinux/ ${ISO_BUILD_PATH}/ \
 	|| exit_with_msg "[ISO] ${CONF_PATH}/iso/isolinux/ not found"
     [[ -d ${CONF_PATH}/iso/preseed/ ]] && cp -r ${CONF_PATH}/iso/preseed/ ${ISO_BUILD_PATH}/
-    [[ -r ${CONF_PATH}/iso/DeepWin.exe ]] && cp ${ISO_BUILD_PATH}/iso/DeepWin.exe ${ISO_BUILD_PATH}/
+    [[ -r ${CONF_PATH}/iso/DeepWin.exe ]] && cp ${CONF_PATH}/iso/DeepWin.exe ${ISO_BUILD_PATH}/
 
     echo_and_log "[ISO] Refreshing MD5 checksum ..."
     [[ -f ${ISO_BUILD_PATH}/md5sum.txt ]] && sudo rm -f ${ISO_BUILD_PATH}/md5sum.txt
@@ -410,8 +410,7 @@ EOF
     echo_and_log "[ISO] Generating .disk/base_installable ..."
     echo "full_cd/single" > ${ISO_BUILD_PATH}/.disk/cd_type
     echo_and_log "[ISO] Generating .disk/info ..."
-    echo "${DISTRO_NAME} ${VERSION} \"${CODENAME}\" - ${STATUS} ${ARCH} ($DATE)" \
-	> ${ISO_BUILD_PATH}/.disk/info
+    echo "${ISO_INFO}" > ${ISO_BUILD_PATH}/.disk/info
     echo_and_log "[ISO] Generating .disk/release_notes_url ..."
     echo "${RELEASE_URL}" > ${ISO_BUILD_PATH}/.disk/release_notes_url
     
