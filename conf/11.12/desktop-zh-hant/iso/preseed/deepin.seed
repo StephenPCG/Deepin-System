@@ -1,5 +1,5 @@
 # Language and country.
-d-i 	debian-installer/locale string zh_CN.UTF-8
+d-i 	debian-installer/locale string zh_TW.UTF-8
 
 # Keyboard 
 d-i 	console-setup/ask_detect boolean false
@@ -7,7 +7,7 @@ d-i 	console-setup/layoutcode string us
 
 # Time
 d-i 	clock-setup/ntp boolean false
-d-i 	time/zone string Asia/Shanghai
+d-i 	time/zone string Asia/Taipei
 d-i 	clock-setup/utc boolean false
 
 # Don't install any task.

@@ -26,11 +26,6 @@ EOF
 
 localepurge
 
-cat > /etc/timezone <<EOF
-Asia/Shanghai
-EOF
-dpkg-reconfigure --frontend noninteractive tzdata
-
 echo "[CUSTOM][CHROOT] Mark all packages as manual installed ..."
 aptitude unmarkauto ~M
 

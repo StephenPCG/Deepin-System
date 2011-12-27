@@ -115,7 +115,7 @@ script_init ()
     DEFAULT_OUTPUT="${DISTRO_NAME}-${SCHEME}-${ARCH}.iso"
     OUTPUT=${OUTPUT:-${DEFAULT_OUTPUT}}
 
-    DEFAULT_OUTPUT_PATH="${OUTPUT_BASE}/${SCHEME}/daily-live/$(date +%Y%m%d)"
+    DEFAULT_OUTPUT_PATH="${OUTPUT_BASE}/daily-live/${SCHEME}/$(date +%Y%m%d)"
     OUTPUT_PATH=${OUTPUT_PATH:-${DEFAULT_OUTPUT_PATH}}
 
     ISO_FILE="${OUTPUT_PATH}/${OUTPUT}"
