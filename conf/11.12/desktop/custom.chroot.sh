@@ -31,8 +31,8 @@ Asia/Shanghai
 EOF
 dpkg-reconfigure --frontend noninteractive tzdata
 
-echo "[CUSTOM][CHROOT] Mark all packages as manual installed ..."
-aptitude unmarkauto ~M
+#echo "[CUSTOM][CHROOT] Mark all packages as manual installed ..."
+#aptitude unmarkauto ~M
 
 #echo "[CUSTOM][CHROOT] Fix yozo office font issue ..."
 #yz-fonts
@@ -48,9 +48,9 @@ echo "[CUSTOM][CHROOT] Set initramfs compress methos to lzma ..."
 sed -i 's/COMPRESS=gzip/COMPRESS=lzma/g' /etc/initramfs-tools/initramfs.conf
 
 ## don't show fvwm1 on login window
-if [ -f /usr/share/xsessions/Fvwm1.desktop ]; then
-    dpkg-divert --local --rename --add /usr/share/xsessions/Fvwm1.desktop
-fi
+#if [ -f /usr/share/xsessions/Fvwm1.desktop ]; then
+#    dpkg-divert --local --rename --add /usr/share/xsessions/Fvwm1.desktop
+#fi
 
 ## 最后需要 update-initramfs
 update-initramfs -u

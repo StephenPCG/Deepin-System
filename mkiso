@@ -305,16 +305,23 @@ do_base () {
 do_desktop () {
     echo_and_log "[DESKTOP] Installing packages defined by scheme ..."
     prechroot
-    echo_and_log "[DESKTOP] Packages are: ${DEFAULT_PACKAGES}"
     echo "${SOURCES_LIST}" | sudo tee "${CHROOT_PATH}/etc/apt/sources.list" > /dev/null
     echo "${APT_PREFERENCES}" | sudo tee "${CHROOT_PATH}/etc/apt/preferences" > /dev/null
     wget -q "${DEEPIN_APTKEY_URL}" -O- | chroot_do ${CHROOT_PATH} apt-key add - > /dev/null
     wget -q "${MEDIBUNTU_APTKEY_URL}" -O- | chroot_do ${CHROOT_PATH} apt-key add - > /dev/null
     chroot_do ${CHROOT_PATH} apt-get --allow-unauthenticated update |& log
+    echo_and_log "[DESKTOP] Packages are: ${DEFAULT_PACKAGES}"
     chroot_do ${CHROOT_PATH} apt-get install \
 	--no-install-recommends -y --force-yes \
 	--allow-unauthenticated \
 	${DEFAULT_PACKAGES} |& log
+    echo_and_log "[DESKTOP] Marking packages as manually installed ... "
+    chroot_do ${CHROOT_PATH} aptitude unmarkauto ~M |& log
+    echo_and_log "[DESKTOP] Install packages needed only by live cd: ${LIVE_ONLY_PACKAGES}"
+    chroot_do ${CHROOT_PATH} apt-get install \
+	--no-install-recommends -y --force-yes \
+	--allow-unauthenticated \
+	${LIVE_ONLY_PACKAGES} |& log
 
     postchroot
     echo_and_log "[DESKTOP] Installation finished"
