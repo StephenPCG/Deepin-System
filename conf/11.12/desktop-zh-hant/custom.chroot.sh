@@ -46,6 +46,11 @@ done
 echo "[CUSTOM][CHROOT] Set initramfs compress methos to lzma ..."
 sed -i 's/COMPRESS=gzip/COMPRESS=lzma/g' /etc/initramfs-tools/initramfs.conf
 
+## don't show fvwm1 on login window
+if [ -f /usr/share/xsessions/Fvwm1.desktop ]; then
+    dpkg-divert --local --rename --add /usr/share/xsessions/Fvwm1.desktop
+fi
+
 ## 最后需要 update-initramfs
 update-initramfs -u
 

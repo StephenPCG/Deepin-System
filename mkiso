@@ -310,7 +310,6 @@ do_desktop () {
     echo "${APT_PREFERENCES}" | sudo tee "${CHROOT_PATH}/etc/apt/preferences" > /dev/null
     wget -q "${DEEPIN_APTKEY_URL}" -O- | chroot_do ${CHROOT_PATH} apt-key add - > /dev/null
     wget -q "${MEDIBUNTU_APTKEY_URL}" -O- | chroot_do ${CHROOT_PATH} apt-key add - > /dev/null
-    wget -q "${GOOGLE_APTKEY_URL}" -O- | chroot_do ${CHROOT_PATH} apt-key add - > /dev/null
     chroot_do ${CHROOT_PATH} apt-get --allow-unauthenticated update |& log
     chroot_do ${CHROOT_PATH} apt-get install \
 	--no-install-recommends -y --force-yes \
@@ -325,6 +324,8 @@ do_custom () {
     echo_and_log "[CUSTOM] Executing custom script (inside chroot) ..."
     prechroot
     chroot_source_local_if_exist "${CONF_PATH}/custom.chroot.sh" |& log
+    chroot_do ${CHROOT_PATH} apt-get --no-install-recommends -y --force-yes \
+	--allow-unauthenticated upgrade |& log
     postchroot
 
     echo_and_log "[CUSTOM] Executing custom script (outside chroot) ..."
