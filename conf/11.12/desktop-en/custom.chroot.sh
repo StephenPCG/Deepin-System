@@ -26,11 +26,7 @@ EOF
 
 localepurge
 
-echo "[CUSTOM][CHROOT] Mark all packages as manual installed ..."
-aptitude unmarkauto ~M
-
-#echo "[CUSTOM][CHROOT] Fix yozo office font issue ..."
-#yz-fonts
+[[ -x /usr/bin/updatedb ]] && /usr/bin/updatedb
 
 echo "[CUSTOM][CHROOT] Deleting unused lanaguages ..."
 LANGLIST='am ar ast be bg bn bs ca cs da de dz el eo es et eu fa fi fr ga gl gu he hi hr hu id is it ja ka kk km ko ku lt lv mk ml mr  nb ne nl nn no pa pl pt pt_br ro ru sk sl sq sr sv ta te th tl tr uk vi'
@@ -41,11 +37,6 @@ done
 
 echo "[CUSTOM][CHROOT] Set initramfs compress methos to lzma ..."
 sed -i 's/COMPRESS=gzip/COMPRESS=lzma/g' /etc/initramfs-tools/initramfs.conf
-
-## don't show fvwm1 on login window
-if [ -f /usr/share/xsessions/Fvwm1.desktop ]; then
-    dpkg-divert --local --rename --add /usr/share/xsessions/Fvwm1.desktop
-fi
 
 ## 最后需要 update-initramfs
 update-initramfs -u
